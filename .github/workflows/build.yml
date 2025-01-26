@@ -25,27 +25,23 @@ jobs:
           npm ci
           npx expo install
 
-      - name: 🔑 Setup EAS
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: 🔑 Create Expo token file
         run: |
-          echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
-          npx eas login --non-interactive
+          mkdir -p ~/.expo
+          echo "{ \"sessionSecret\": \"${{ secrets.EXPO_TOKEN }}\" }" > ~/.expo/state.json
 
       - name: 🔧 Configure EAS
         run: |
           npx eas build:configure
 
       - name: 🏗 Build APK
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          npx eas build --platform android --profile preview --non-interactive --local
+          npx expo prebuild --platform android --clean
+          cd android
+          ./gradlew assembleRelease
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: app-release
-          path: |
-            *.apk
-            build/**/*.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
