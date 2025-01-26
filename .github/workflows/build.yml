@@ -26,35 +26,26 @@ jobs:
           npx expo install
 
       - name: 🔑 Setup EAS
-        run: |
-          npx expo login --non-interactive -u ${{ secrets.EXPO_USERNAME }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
+          npx eas login --non-interactive
+
+      - name: 🔧 Configure EAS
+        run: |
+          npx eas build:configure
 
       - name: 🏗 Build APK
-        run: |
-          npx eas build --platform android --profile preview --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: ⏳ Wait for build
         run: |
-          echo "Waiting for build to complete..."
-          sleep 300  # Wait 5 minutes
-
-      - name: 📱 Download APK
-        run: |
-          BUILD_ID=$(npx eas build:list --json --limit 1 --platform android --status finished | jq -r '.[0].id')
-          if [ -z "$BUILD_ID" ]; then
-            echo "No completed build found"
-            exit 1
-          fi
-          npx eas build:download --build-id $BUILD_ID --output app-release.apk
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          npx eas build --platform android --profile preview --non-interactive --local
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: app-release
-          path: app-release.apk
+          path: |
+            *.apk
+            build/**/*.apk
