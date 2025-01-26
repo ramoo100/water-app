@@ -1,0 +1,44 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: 📚 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 📦 Install dependencies
+        run: |
+          npm install -g expo-cli
+          npm install -g eas-cli
+          npm install
+
+      - name: 🔑 Setup EAS
+        run: |
+          echo "${{ secrets.EXPO_TOKEN }}" | npx eas login
+
+      - name: 🏗 Build APK
+        run: npx eas build -p android --profile preview --non-interactive --no-wait
+
+      - name: 📱 Download APK
+        run: |
+          BUILD_ID=$(npx eas build:list --json --limit 1 --platform android --status finished | jq -r '.[0].id')
+          npx eas build:download --build-id $BUILD_ID --output app-release.apk
+
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: app-release.apk

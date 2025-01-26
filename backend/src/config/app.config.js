@@ -1,12 +1,18 @@
 // Utility functions for validation
 const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  if (!email || typeof email !== 'string') return false;
+  // More comprehensive email regex
+  const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return emailRegex.test(email.toLowerCase());
 };
 
 const validatePhone = (phone) => {
-  const phoneRegex = /^\+[0-9]{1,3}\s[0-9]{3}\s[0-9]{3}\s[0-9]{3}$/;
-  return phoneRegex.test(phone);
+  if (!phone || typeof phone !== 'string') return false;
+  // Support multiple phone formats including Syrian numbers
+  const phoneRegex = /^(\+?963|0)?9\d{8}$/;
+  // Remove any spaces or special characters
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  return phoneRegex.test(cleanPhone);
 };
 
 const config = {

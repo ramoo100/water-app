@@ -7,6 +7,7 @@ const http = require('http');
 const socketService = require('./services/socket.service');
 const AlertService = require('./services/alert.service');
 const SchedulerService = require('./services/scheduler.service');
+const errorMiddleware = require('./middleware/errorMiddleware');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -46,8 +47,25 @@ const setupAlerts = () => {
   }, 43200000);
 };
 
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Gracefully shutdown after logging
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+  // Gracefully shutdown after logging
+  process.exit(1);
+});
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Special handling for Stripe webhook
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
@@ -73,30 +91,56 @@ app.use('/api/cash', cashRoutes);
 app.use('/api/cash-handling', cashHandlingRoutes);
 app.use('/api/analysis', analysisRoutes);
 
+// Apply error handling middleware (should be after all routes)
+app.use(errorMiddleware);
+
+// Handle unhandled routes
+app.all('*', (req, res, next) => {
+  next(new AppError(`الصفحة غير موجودة: ${req.originalUrl}`, 404));
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'حدث خطأ في الخادم';
+  
+  // Log error details
+  console.error(`[${new Date().toISOString()}] Error:`, {
+    statusCode,
+    message,
+    path: req.path,
+    method: req.method,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+
+  res.status(statusCode).json({
     success: false,
-    message: 'حدث خطأ في الخادم',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message,
+    error: process.env.NODE_ENV === 'development' ? {
+      stack: err.stack,
+      details: err.details
+    } : undefined
   });
 });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/water-delivery')
-  .then(() => {
-    console.log('Connected to MongoDB successfully');
-    
-    // Start server
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      setupAlerts(); // Start automated alerts
-      SchedulerService.initialize(); // Initialize scheduled reports
-    });
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/water-delivery', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000
+})
+.then(() => {
+  console.log('Connected to MongoDB successfully');
+  
+  // Start server
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    setupAlerts(); // Start automated alerts
+    SchedulerService.initialize(); // Initialize scheduled reports
   });
+})
+.catch((err) => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});

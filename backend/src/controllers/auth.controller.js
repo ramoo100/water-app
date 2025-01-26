@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const { AppError, asyncHandler } = require('../../src/utils/errorHandler');
+const rateLimit = require('express-rate-limit');
+const { validatePassword } = require('../utils/validators');
 
 // Create JWT Token
 const createToken = (user) => {
@@ -10,94 +13,147 @@ const createToken = (user) => {
   );
 };
 
+// Rate limiting for login attempts
+exports.loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'عدد محاولات تسجيل الدخول تجاوز الحد المسموح، الرجاء المحاولة لاحقاً'
+});
+
 // Register new user
-exports.register = async (req, res) => {
-  try {
-    const { name, phone, password, address, location } = req.body;
+exports.register = asyncHandler(async (req, res, next) => {
+  const { name, phone, password, address, location } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'رقم الهاتف مسجل مسبقاً'
-      });
-    }
-
-    // Create new user
-    const user = new User({
-      name,
-      phone,
-      password,
-      address,
-      location: {
-        type: 'Point',
-        coordinates: location
-      }
-    });
-
-    await user.save();
-
-    // Create token
-    const token = createToken(user);
-
-    res.status(201).json({
-      success: true,
-      message: 'تم التسجيل بنجاح',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        phone: user.phone,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'حدث خطأ أثناء التسجيل',
-      error: error.message
-    });
+  // Validate required fields
+  if (!name || !phone || !password) {
+    throw new AppError('جميع الحقول مطلوبة', 400);
   }
-};
+
+  // Validate password strength
+  if (!validatePassword(password)) {
+    throw new AppError('كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، وتتضمن أحرف كبيرة وصغيرة وأرقام ورموز خاصة', 400);
+  }
+
+  // Validate phone format
+  const phoneRegex = /^(\+?963|0)?9\d{8}$/;
+  if (!phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''))) {
+    throw new AppError('رقم الهاتف غير صالح', 400);
+  }
+
+  // Check if user already exists
+  const existingUser = await User.findOne({ phone });
+  if (existingUser) {
+    throw new AppError('رقم الهاتف مسجل مسبقاً', 400);
+  }
+
+  // Create new user
+  const user = await User.create({
+    name,
+    phone,
+    password,
+    address,
+    location: location ? {
+      type: 'Point',
+      coordinates: location
+    } : undefined
+  });
+
+  // Create token
+  const token = createToken(user);
+
+  res.status(201).json({
+    success: true,
+    message: 'تم التسجيل بنجاح',
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role
+    }
+  });
+});
 
 // Login user
-exports.login = async (req, res) => {
+exports.login = asyncHandler(async (req, res, next) => {
+  const { phone, password } = req.body;
+
+  // Validate required fields
+  if (!phone || !password) {
+    throw new AppError('الرجاء إدخال رقم الهاتف وكلمة المرور', 400);
+  }
+
+  // Find user
+  const user = await User.findOne({ phone }).select('+password');
+  if (!user) {
+    throw new AppError('رقم الهاتف أو كلمة المرور غير صحيحة', 401);
+  }
+
+  // Check password
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    throw new AppError('رقم الهاتف أو كلمة المرور غير صحيحة', 401);
+  }
+
+  // Check if user is active
+  if (user.status !== 'active') {
+    throw new AppError('الحساب غير مفعل', 401);
+  }
+
+  // Create token
+  const token = createToken(user);
+
+  res.json({
+    success: true,
+    message: 'تم تسجيل الدخول بنجاح',
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role
+    }
+  });
+});
+
+// Get current user
+exports.getCurrentUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  
+  if (!user) {
+    throw new AppError('المستخدم غير موجود', 404);
+  }
+
+  res.json({
+    success: true,
+    user: {
+      id: user._id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role
+    }
+  });
+});
+
+// Add refresh token functionality
+exports.refreshToken = asyncHandler(async (req, res, next) => {
+  const { refreshToken } = req.body;
+  
+  if (!refreshToken) {
+    throw new AppError('Refresh token is required', 400);
+  }
+
   try {
-    const { phone, password } = req.body;
-
-    // Find user
-    const user = await User.findOne({ phone });
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || 'refresh-secret-key');
+    const user = await User.findById(decoded.id);
+    
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'رقم الهاتف أو كلمة المرور غير صحيحة'
-      });
+      throw new AppError('User not found', 404);
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'رقم الهاتف أو كلمة المرور غير صحيحة'
-      });
-    }
-
-    // Check if user is active
-    if (user.status !== 'active') {
-      return res.status(401).json({
-        success: false,
-        message: 'الحساب غير مفعل'
-      });
-    }
-
-    // Create token
     const token = createToken(user);
-
     res.json({
       success: true,
-      message: 'تم تسجيل الدخول بنجاح',
       token,
       user: {
         id: user._id,
@@ -107,27 +163,6 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'حدث خطأ أثناء تسجيل الدخول',
-      error: error.message
-    });
+    throw new AppError('Invalid refresh token', 401);
   }
-};
-
-// Get current user
-exports.getCurrentUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json({
-      success: true,
-      user
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'حدث خطأ أثناء جلب بيانات المستخدم',
-      error: error.message
-    });
-  }
-};
+});
