@@ -27,7 +27,7 @@ jobs:
 
       - name: 🔑 Create Expo token file
         run: |
-          mkdir -p ~/.expo
+          mkdir -p ~/.ramoo1002
           echo "{ \"sessionSecret\": \"${{ secrets.EXPO_TOKEN }}\" }" > ~/.expo/state.json
 
       - name: 🔧 Configure EAS
