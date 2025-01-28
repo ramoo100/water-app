@@ -29,8 +29,8 @@ jobs:
         run: |
           npm install
           npm install -g @react-native-community/cli
-          npm install @react-native/gradle-plugin --save-dev
-          npm install react-native
+          npm install react-native@0.73.4
+          npm install @react-native/gradle-plugin@0.73.4 --save-dev
           npx react-native config
 
       - name: 🔧 Build Android
