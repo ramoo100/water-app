@@ -13,6 +13,12 @@ jobs:
       - name: 📚 Checkout code
         uses: actions/checkout@v3
 
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 🏗 Setup Node
         uses: actions/setup-node@v3
         with:
@@ -39,7 +45,8 @@ jobs:
           npx expo prebuild --platform android --clean
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          ./gradlew wrapper --gradle-version 7.6.1
+          ./gradlew assembleRelease --stacktrace
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
