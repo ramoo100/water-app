@@ -1,5 +1,3 @@
-rootProject.name = 'nzamtwsylalmyah'
-
 pluginManagement {
     repositories {
         google()
@@ -7,6 +5,8 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+rootProject.name = 'nzamtwsylalmyah'
 
 include ':app'
 
