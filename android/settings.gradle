@@ -23,6 +23,13 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 rootProject.name = 'nzamtwsylalmyah'
 
+include ':app'
+
+apply from: new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../react.gradle')
+
+include ':react-native-gradle-plugin'
+project(':react-native-gradle-plugin').projectDir = new File(['node', '--print', "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile()
+
 dependencyResolutionManagement {
   versionCatalogs {
     reactAndroidLibs {
@@ -33,6 +40,3 @@ dependencyResolutionManagement {
 
 apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
 useExpoModules()
-
-include ':app'
-includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile())
