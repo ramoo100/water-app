@@ -23,6 +23,7 @@ jobs:
         run: |
           npm install
           npm install -g eas-cli@latest
+          npm install expo-cli --global
 
       - name: 🔑 Setup Expo
         env:
@@ -31,11 +32,14 @@ jobs:
           mkdir -p ~/.expo
           echo "{ \"sessionSecret\": \"${{ secrets.EXPO_TOKEN }}\" }" > ~/.expo/state.json
 
-      - name: 🔧 EAS Build
+      - name: 🔧 Build Android
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          eas build --platform android --profile preview --non-interactive --local
+          npx expo prebuild --platform android --clean
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
