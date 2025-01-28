@@ -29,15 +29,13 @@ jobs:
         run: |
           npm install
           npm install -g react-native-cli
-          npm install -g @react-native-community/cli
 
       - name: 🔧 Build Android
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew clean
-          ./gradlew :app:bundleRelease
-          ./gradlew assembleRelease --no-daemon
+          GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true" ./gradlew clean
+          GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true" ./gradlew assembleRelease
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
