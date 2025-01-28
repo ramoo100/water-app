@@ -28,25 +28,16 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm install
-          npm install -g eas-cli@latest
-          npm install expo-cli --global
-
-      - name: 🔑 Setup Expo
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          mkdir -p ~/.expo
-          echo "{ \"sessionSecret\": \"${{ secrets.EXPO_TOKEN }}\" }" > ~/.expo/state.json
+          npm install -g react-native-cli
+          npm install -g @react-native-community/cli
 
       - name: 🔧 Build Android
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          npx expo prebuild --platform android --clean
           cd android
-          chmod +x ./gradlew
-          ./gradlew wrapper --gradle-version 7.6.1
-          ./gradlew assembleRelease --stacktrace
+          chmod +x gradlew
+          ./gradlew clean
+          ./gradlew :app:bundleRelease
+          ./gradlew assembleRelease --no-daemon
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
