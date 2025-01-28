@@ -28,8 +28,8 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm install
-          npm install -g @react-native-community/cli
-          npm install @react-native/gradle-plugin --save-dev
+          npm install -g react-native
+          npm install react-native
 
       - name: 🔧 Build Android
         run: |
