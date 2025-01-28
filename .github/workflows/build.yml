@@ -28,12 +28,14 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
-          npx expo login --non-interactive
+          mkdir -p ~/.expo
+          echo "{ \"sessionSecret\": \"${{ secrets.EXPO_TOKEN }}\" }" > ~/.expo/state.json
 
       - name: 🔧 EAS Build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          npx eas build --platform android --profile preview --non-interactive --local
+          eas build --platform android --profile preview --non-interactive --local
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v3
