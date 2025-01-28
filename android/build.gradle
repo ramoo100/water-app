@@ -17,7 +17,10 @@ buildscript {
             url "$rootDir/../node_modules/react-native/android"
         }
         maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
+            url "$rootDir/../node_modules/@react-native/gradle-plugin"
+        }
+        maven {
+            url "https://registry.npmjs.org/"
         }
     }
     dependencies {
@@ -42,7 +45,10 @@ allprojects {
             url("$rootDir/../node_modules/jsc-android/dist")
         }
         maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
+            url "$rootDir/../node_modules/@react-native/gradle-plugin"
+        }
+        maven {
+            url "https://registry.npmjs.org/"
         }
     }
 }

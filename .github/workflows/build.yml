@@ -29,13 +29,14 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm install -g @react-native-community/cli
+          npm install @react-native/gradle-plugin@0.73.4 --save-dev
           npx react-native config
 
       - name: 🔧 Build Android
         run: |
           cd android
           chmod +x gradlew
-          GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true" ./gradlew clean
+          GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true" ./gradlew clean --refresh-dependencies
           GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true" ./gradlew assembleRelease
 
       - name: 📤 Upload APK
